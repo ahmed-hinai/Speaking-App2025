@@ -3,26 +3,51 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Speaking App Test Page</title>
+  <title>Speaking App – Prompts + Recorder</title>
+  <style>
+    body{font-family:Arial,system-ui; padding:20px; max-width:820px; margin:auto; line-height:1.5}
+    h1{margin:12px 0 8px}
+    .card{border:1px solid #ddd; border-radius:10px; padding:16px; margin:16px 0}
+    .row{display:flex; gap:12px; flex-wrap:wrap}
+    button{padding:10px 14px; border-radius:8px; border:1px solid #bbb; background:#fff; cursor:pointer}
+    button:disabled{opacity:.5; cursor:not-allowed}
+    #prompt{font-size:1.05rem; background:#fafafa; padding:12px; border-radius:8px; border:1px dashed #ccc}
+    #download{display:none}
+    small{opacity:.7}
+  </style>
 </head>
 
-<body style="font-family:Arial; padding:20px; max-width:720px; margin:auto;">
+<body>
+  <h1>Speaking App – Mic Test with Prompts</h1>
 
-  <h1>Speaking App – Mic Test</h1>
+  <div class="card">
+    <h3>1) Choose a prompt</h3>
+    <div class="row">
+      <label>
+        Topic:
+        <select id="topic">
+          <option value="health">Unit 5 – Health & Fitness</option>
+          <option value="invention">Unit 6 – Discovery & Invention</option>
+          <option value="economics">Unit 8 – Economics</option>
+        </select>
+      </label>
+      <button id="nextPrompt">Next prompt</button>
+    </div>
+    <p id="prompt">Click “Next prompt” to load one.</p>
+  </div>
 
-  <p id="status">Loading…</p>
-
-  <p>
-    <button id="record" disabled>🎙️ Start Recording</button>
-    <button id="stop" disabled>■ Stop</button>
-  </p>
-
-  <audio id="player" controls style="width:100%;"></audio>
-  <p><a id="download" href="#" style="display:none">⬇️ Download recording</a></p>
-
-  <p style="opacity:.7;font-size:.9em;">Tip: If the microphone prompt does not appear, refresh the page and click "Allow".</p>
+  <div class="card">
+    <h3>2) Record your answer</h3>
+    <p id="status">Loading…</p>
+    <div class="row">
+      <button id="record" disabled>🎙️ Start Recording</button>
+      <button id="stop" disabled>■ Stop</button>
+    </div>
+    <audio id="player" controls style="width:100%; margin-top:10px;"></audio>
+    <p><a id="download" href="#">⬇️ Download recording</a></p>
+    <small>Tip: If the microphone prompt doesn’t appear, refresh and click “Allow”. On iPhone, use Safari.</small>
+  </div>
 
   <script src="script.js"></script>
 </body>
-
 </html>
