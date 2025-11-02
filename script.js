@@ -1,10 +1,45 @@
-// Simple in-browser recorder (MediaRecorder)
+// ----- SIMPLE PROMPTS -----
+const PROMPTS = {
+  health: [
+    "Describe a weekly routine that helps you stay fit. Include exercise and diet.",
+    "What advice would you give a friend who wants to improve their sleep?",
+    "Explain the pros and cons of high-intensity training for beginners."
+  ],
+  invention: [
+    "Choose a modern invention and explain how it changed daily life.",
+    "Compare two inventions and explain which is more impactful and why.",
+    "Describe a problem at college and propose an invention to solve it."
+  ],
+  economics: [
+    "What are the advantages and disadvantages of online shopping for local business?",
+    "Explain inflation in simple terms with one real example.",
+    "Should students be paid for part-time work during term? Give reasons."
+  ]
+};
 
-const recordBtn = document.getElementById("record");
-const stopBtn = document.getElementById("stop");
-const statusEl = document.getElementById("status");
-const player = document.getElementById("player");
-const downloadLink = document.getElementById("download");
+const topicSel   = document.getElementById("topic");
+const nextBtn    = document.getElementById("nextPrompt");
+const promptBox  = document.getElementById("prompt");
+
+let promptIndex = 0;
+function showNextPrompt() {
+  const list = PROMPTS[topicSel.value];
+  if (!list || list.length === 0) {
+    promptBox.textContent = "No prompts available.";
+    return;
+  }
+  promptIndex = (promptIndex + 1) % list.length;
+  promptBox.textContent = list[promptIndex];
+}
+
+nextBtn.addEventListener("click", showNextPrompt);
+
+// ----- RECORDER (MediaRecorder API) -----
+const recordBtn   = document.getElementById("record");
+const stopBtn     = document.getElementById("stop");
+const statusEl    = document.getElementById("status");
+const player      = document.getElementById("player");
+const downloadLink= document.getElementById("download");
 
 let mediaRecorder;
 let chunks = [];
@@ -50,12 +85,13 @@ async function setupMic() {
     stopBtn.disabled = true;
 
     recordBtn.onclick = () => mediaRecorder.start();
-    stopBtn.onclick = () => mediaRecorder.stop();
+    stopBtn.onclick   = () => mediaRecorder.stop();
   } catch (err) {
     statusEl.textContent = "Mic error: " + err.message;
     recordBtn.disabled = true;
-    stopBtn.disabled = true;
+    stopBtn.disabled   = true;
   }
 }
 
 setupMic();
+
