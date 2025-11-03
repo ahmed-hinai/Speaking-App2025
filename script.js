@@ -1,205 +1,118 @@
-// ===== PROMPTS FOR UNITS 1,2,3,4,5,6,8 =====
-const PROMPTS = {
-  animals: [
-    "Describe a wild animal you find fascinating. Explain its habitat and one adaptation.",
-    "Compare two pets that are common in your country. Which is easier to care for and why?",
-    "Should zoos focus on conservation or education? Give reasons with one example."
-  ],
-  environment: [
-    "Explain one cause and one effect of air pollution in cities you know.",
-    "Give three practical ways a college can reduce plastic waste. Which is most effective?",
-    "Do the benefits of renewable energy outweigh the costs in your country? Explain."
-  ],
-  transport: [
-    "Compare public transport and private cars for daily commuting. Which is better and why?",
-    "Suggest improvements to make your city’s transport safer and more efficient.",
-    "How would self-driving vehicles change logistics or daily life? Give one advantage and one risk."
-  ],
-  customs: [
-    "Describe a local celebration or tradition. What values does it teach?",
-    "How should tourists behave to respect local customs? Give two examples.",
-    "Compare wedding traditions in two cultures. What is similar and different?"
-  ],
-  health: [
-    "Describe a weekly routine that helps you stay fit. Include exercise and diet.",
-    "What advice would you give a friend who wants to improve their sleep?",
-    "Explain the pros and cons of high-intensity training for beginners."
-  ],
-  invention: [
-    "Choose a modern invention and explain how it changed daily life.",
-    "Compare two inventions and explain which is more impactful and why.",
-    "Describe a problem at college and propose an invention to solve it."
-  ],
-  economics: [
-    "What are the advantages and disadvantages of online shopping for local business?",
-    "Explain inflation in simple terms with one real example.",
-    "Should students be paid for part-time work during term? Give reasons."
-  ]
+/** === CONFIG === **/
+const WEBHOOK_URL = "https://hook.eu2.make.com/q67qvv8jx2ls73nb52n1q6bbrxli1my1"; // <- your Make webhook URL
+const APP_VERSION = "v1";
+
+/** === PROMPTS MAP === **/
+const promptMap = {
+  p1: "Describe a healthy daily routine using at least two signposting phrases.",
+  p2: "Compare two inventions and explain which has had a greater impact.",
+  p3: "Give advice to a friend who wants to save money and get fit."
 };
 
-// ===== DOM REFS =====
-const topicSel     = document.getElementById("topic");
-const nextBtn      = document.getElementById("nextPrompt");
-const promptBox    = document.getElementById("prompt");
+const promptSel = document.getElementById("prompt");
+const promptText = document.getElementById("promptText");
+promptText.textContent = promptMap[promptSel.value];
 
-const nameInput    = document.getElementById("studentName");
-const idInput      = document.getElementById("studentId");
-const classInput   = document.getElementById("studentClass");
+promptSel.addEventListener("change", () => {
+  promptText.textContent = promptMap[promptSel.value];
+});
 
-const recordBtn    = document.getElementById("record");
-const stopBtn      = document.getElementById("stop");
-const statusEl     = document.getElementById("status");
-const timerEl      = document.getElementById("timer");
-const player       = document.getElementById("player");
-const downloadLink = document.getElementById("download");
+/** === RECORDER === **/
+let mediaRecorder, chunks = [];
+let startedAt = 0, timerId = null;
 
-const metaBox      = document.getElementById("meta");
-const copyBtn      = document.getElementById("copyData");
-const submitBtn    = document.getElementById("submit");
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const submitBtn = document.getElementById("submitBtn");
+const timer = document.getElementById("timer");
+const player = document.getElementById("player");
+const statusBox = document.getElementById("status");
 
-// ===== MIC-HELP BANNER HANDLERS =====
-function showMicHelp(){ 
-  const el = document.getElementById("mic-help");
-  if (el) el.style.display = "block";
-}
-function hideMicHelp(){ 
-  const el = document.getElementById("mic-help");
-  if (el) el.style.display = "none";
-}
-const micHelpCloseBtn = document.getElementById("mic-help-close");
-if (micHelpCloseBtn) micHelpCloseBtn.onclick = hideMicHelp;
-
-// ===== PROMPT LOGIC =====
-let promptIndex = -1;
-function showNextPrompt() {
-  const list = PROMPTS[topicSel.value];
-  if (!list || !list.length) {
-    promptBox.textContent = "No prompts available.";
-    return;
-  }
-  promptIndex = (promptIndex + 1) % list.length;
-  promptBox.textContent = list[promptIndex];
-}
-nextBtn.addEventListener("click", showNextPrompt);
-
-// ===== RECORDER (MediaRecorder) =====
-let mediaRecorder;
-let chunks = [];
-let t0 = 0;
-let tick = null;
-let lastPayload = null; // snapshot for copy/submit
-
-function fmt(sec) {
-  const m = Math.floor(sec / 60).toString().padStart(2,"0");
-  const s = Math.floor(sec % 60).toString().padStart(2,"0");
-  return `${m}:${s}`;
+function fmt(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
 }
 
-function startTimer() {
-  t0 = Date.now();
-  timerEl.textContent = "00:00";
-  tick = setInterval(() => {
-    const el = (Date.now() - t0) / 1000;
-    timerEl.textContent = fmt(el);
-  }, 250);
-}
-function stopTimer() {
-  if (tick) clearInterval(tick);
-  const el = (Date.now() - t0) / 1000;
-  return Math.round(el);
-}
-
-async function setupMic() {
-  // Show help immediately if already denied (where supported)
-  if (navigator.permissions && navigator.permissions.query) {
-    try {
-      const p = await navigator.permissions.query({ name: "microphone" });
-      if (p.state === "denied") showMicHelp();
-      p.onchange = () => { if (p.state === "denied") showMicHelp(); else hideMicHelp(); };
-    } catch {}
-  }
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    statusEl.textContent = "This browser cannot record audio here.";
-    recordBtn.disabled = true;
-    stopBtn.disabled = true;
-    return;
-  }
-
+startBtn.addEventListener("click", async () => {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
     mediaRecorder = new MediaRecorder(stream);
-
-    mediaRecorder.onstart = () => {
-      chunks = [];
-      statusEl.textContent = "Recording…";
-      recordBtn.disabled = true;
-      stopBtn.disabled = false;
-      downloadLink.style.display = "none";
-      copyBtn.disabled = true;
-      submitBtn.disabled = true;
-      startTimer();
-    };
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
-
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
     mediaRecorder.onstop = () => {
-      const durationSec = stopTimer();
       const blob = new Blob(chunks, { type: "audio/webm" });
-      const url = URL.createObjectURL(blob);
-      player.src = url;
-      downloadLink.href = url;
-      downloadLink.download = "recording.webm";
-      downloadLink.style.display = "inline-block";
-      statusEl.textContent = "Recorded. Play or download below.";
-      recordBtn.disabled = false;
-      stopBtn.disabled = true;
-
-      const payload = {
-        name:  nameInput.value.trim(),
-        id:    idInput.value.trim(),
-        klass: classInput.value.trim(),
-        unit:  topicSel.value,
-        prompt: promptBox.textContent.trim(),
-        timestamp_iso: new Date().toISOString(),
-        duration_sec: durationSec
-      };
-      lastPayload = payload;
-      metaBox.textContent = JSON.stringify(payload, null, 2);
-      copyBtn.disabled = false;
-      submitBtn.disabled = false;
+      player.src = URL.createObjectURL(blob);
+      submitBtn.disabled = false; // enable submit once audio exists
     };
 
-    statusEl.textContent = "Mic ready. Tap Start Recording.";
-    recordBtn.disabled = false;
-    stopBtn.disabled = true;
+    mediaRecorder.start();
+    startedAt = Date.now();
+    timerId = setInterval(() => timer.textContent = fmt(Date.now() - startedAt), 200);
 
-    recordBtn.onclick = () => mediaRecorder.start();
-    stopBtn.onclick   = () => mediaRecorder.stop();
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    submitBtn.disabled = true;
+
+    statusBox.innerHTML = "<small class='ok'>Recording…</small>";
+
   } catch (err) {
-    statusEl.textContent = "Mic error: " + err.message;
-    recordBtn.disabled = true;
-    stopBtn.disabled   = true;
-    if (err.name === "NotAllowedError" || err.name === "SecurityError") showMicHelp();
+    statusBox.innerHTML = "<small class='err'>Microphone blocked. Allow mic and reload.</small>";
+    console.error(err);
+  }
+});
+
+stopBtn.addEventListener("click", () => {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  clearInterval(timerId);
+
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+
+  statusBox.innerHTML = "<small>Stopped. You may listen before sending.</small>";
+});
+
+/** === SUBMIT METADATA TO MAKE === **/
+async function submitToMake() {
+  submitBtn.disabled = true;
+  statusBox.innerHTML = "<small>Submitting…</small>";
+
+  const durationMs = startedAt ? (Date.now() - startedAt) : 0;
+
+  const payload = {
+    timestamp: new Date().toISOString(),
+    session_id: crypto.randomUUID(),
+    name: document.getElementById("name").value.trim(),
+    group: document.getElementById("group").value.trim(),
+    device: navigator.userAgent,
+    prompt_id: promptSel.value,
+    prompt_text: promptMap[promptSel.value],
+    scaffold_level: document.getElementById("scaffold").value,
+    grammar_target: document.getElementById("grammar").value,
+    vocab_set: document.getElementById("vocab").value,
+    duration_ms: durationMs,
+    self_rating: document.getElementById("rating").value,
+    notes: document.getElementById("notes").value.trim(),
+    app_version: APP_VERSION
+  };
+
+  try {
+    const res = await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    statusBox.innerHTML = "<small class='ok'>Submitted ✅</small>";
+
+  } catch (err) {
+    statusBox.innerHTML = "<small class='err'>Submit failed. Try again.</small>";
+    console.error(err);
+  } finally {
+    submitBtn.disabled = false;
   }
 }
 
-copyBtn.addEventListener("click", async () => {
-  if (!lastPayload) return;
-  try {
-    await navigator.clipboard.writeText(JSON.stringify(lastPayload));
-    copyBtn.textContent = "Copied ✔";
-    setTimeout(() => (copyBtn.textContent = "📋 Copy data"), 1500);
-  } catch {
-    alert("Copy failed. Select the text and copy manually.");
-  }
-});
-
-// Placeholder for next step (Make.com → Google Sheets)
-submitBtn.addEventListener("click", () => {
-  alert("Submit will send data to Google Sheets (we’ll connect this next).");
-});
-
-setupMic();
+submitBtn.addEventListener("click", submitToMake);
