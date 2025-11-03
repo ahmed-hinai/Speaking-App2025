@@ -270,8 +270,7 @@ recBtn.addEventListener('click', async ()=>{
     playBtn.disabled = false;
     stopMeter();
     stopTimer();
-    mediaStream.getTracks().forEach(t=>t.stop());
-    mediaStream = null;
+    if(mediaStream){ mediaStream.getTracks().forEach(t=>t.stop()); mediaStream=null; }
     recStatus.textContent = "Mic: stopped";
     updateAttemptPreview();
   };
@@ -379,34 +378,28 @@ copyBtn.addEventListener('click', ()=>{
   });
 });
 
-/***** EVALUATION HEURISTICS (no STT; we judge from targets + simple length proxy) *****/
+/***** EVALUATION HEURISTICS (no transcript; use time as proxy + level tips) *****/
 function evaluateTwoLine(unit, prompt){
-  // With no transcript text, we approximate length from time.
   const seconds = readTimerSeconds();
-  // Very rough words guess: 110 wpm → ~1.8 wps
-  const estWords = Math.round(seconds * 1.8);
+  const estWords = Math.round(seconds * 1.8); // ~110 wpm
   const minWords = prompt.minWords || 40;
 
   const targets = (unit.targets || []).concat(prompt.targets || []);
-  // We can't parse grammar without text. We gently assume beginner hit 1–2 features if time >= thresholds.
   let targetsHit = 0;
   if(seconds >= 25) targetsHit = 1;
   if(seconds >= 40) targetsHit = 2;
   if(seconds >= 60) targetsHit = Math.min(3, targets.length);
 
-  // CEFR-ish from duration only (classroom hint)
   let cefr = "A2–B1";
   if(seconds >= 35) cefr = "B1";
   if(seconds >= 55) cefr = "B1+";
 
-  // Strengths
   const strengths = [];
   if(seconds >= 25) strengths.push("clear routine and enough detail");
   if(seconds >= 35) strengths.push("good flow/organization");
   const good = strengths.length ? capFirst(`What you did well: ${joinTwo(strengths)}.`)
                                 : "What you did well: understandable ideas — good start.";
 
-  // Next step (level-aware)
   const lvl = levelSelect.value;
   const tips = [];
   if(estWords < minWords) tips.push(`speak a bit longer to reach ${minWords}+ words`);
