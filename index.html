@@ -23,11 +23,13 @@
     .row{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px}
     .pill{background:var(--panel); padding:10px 12px; border-radius:14px; display:flex; align-items:center; gap:10px}
     label{color:var(--muted)}
-    select,button{
+    select,button,input{
       appearance:none; border:none; outline:none;
       background:var(--card); color:var(--text);
-      padding:10px 12px; border-radius:12px; font-size:14px; cursor:pointer;
+      padding:10px 12px; border-radius:12px; font-size:14px;
     }
+    input{min-width:160px}
+    button{cursor:pointer}
     button:hover{filter:brightness(1.06)}
     button.ghost{background:var(--ghost)}
     .card{
@@ -37,32 +39,44 @@
     }
     .targets{margin-top:8px; display:flex; flex-wrap:wrap; gap:6px}
     .badge{padding:6px 10px; border-radius:999px; background:#1b2652; border:1px dashed #32447e; color:#c7d4ff; font-size:12px}
-    textarea{
-      width:100%; background:#0b122b; color:var(--text); border:1px solid #223062;
-      border-radius:12px; padding:12px; resize:vertical; font-size:15px;
-    }
-    .audio-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .audio-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px}
     .status{font-size:13px; color:var(--muted)}
     .meter{width:120px; height:10px; border-radius:6px; background:#0b122b; border:1px solid #223062; overflow:hidden}
     .meter > div{height:100%; background:var(--accent); width:0%}
+    .timer{font-variant-numeric:tabular-nums; background:#0b122b; border:1px solid #223062; padding:6px 10px; border-radius:10px}
     .hidden{display:none}
-    .metric{display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:#0b122b; border:1px solid #223062}
-    .metric.good{border-color:#275a48}.metric.warn{border-color:#7a6127}.metric.bad{border-color:#6a2a2a}
-    .dot{width:10px; height:10px; border-radius:50%}
-    .metric.good .dot{background:var(--good)} .metric.warn .dot{background:var(--warn)} .metric.bad .dot{background:var(--bad)}
-    .metric + .metric{margin-top:8px}
-    .scores{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
-    .score{background:#0b122b; border:1px solid #223062; border-radius:12px; padding:10px 12px}
-    .warnline{color:#ffccaa; font-size:13px}
+    .fb-two{background:#0b122b; border:1px solid #223062; border-radius:12px; padding:10px 12px}
+    .tag{
+      display:inline-block; margin-right:8px; margin-top:6px; padding:4px 8px; font-size:12px;
+      border-radius:999px; border:1px solid #223062; background:#0b122b; color:#d8e2ff
+    }
+    .helpbar{
+      background:#3a2d0e; border:1px solid #6a571f; color:#ffe6b3;
+      padding:8px 12px; border-radius:10px; font-size:13px; display:none; margin-bottom:10px
+    }
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px}
   </style>
 </head>
 <body>
   <header>
     <h1>AI Speaking Coach</h1>
-    <p class="sub">Units 1–8 (excluding 7) • Easy / Medium / Hard • Mic + STT + Playback</p>
+    <p class="sub">Units 1–8 (excluding 7) • Easy / Medium / Hard • Mic recording + playback • Two-line feedback</p>
   </header>
 
   <main>
+    <!-- Mic help / permissions -->
+    <div id="micHelp" class="helpbar">
+      Microphone is blocked or unavailable. In Chrome: click the lock icon → Site settings → Allow Microphone, then reload. On iPhone: use Safari → Settings → Microphone → Allow.
+    </div>
+
+    <!-- Student metadata -->
+    <div class="row">
+      <div class="pill"><label>Name</label><input id="studentName" placeholder="e.g., Ahmed Al-H."></div>
+      <div class="pill"><label>ID</label><input id="studentId" placeholder="e.g., 2414062"></div>
+      <div class="pill"><label>Group</label><input id="studentGroup" placeholder="e.g., 405 / 406"></div>
+    </div>
+
+    <!-- Unit / Level / Prompt controls -->
     <div class="row">
       <div class="pill">
         <label for="unitSelect">Unit</label>
@@ -77,53 +91,61 @@
         </select>
       </div>
       <div class="pill">
-        <button id="loadPromptBtn">Load Prompt</button>
+        <button id="loadPromptBtn">Next prompt</button>
       </div>
     </div>
 
+    <!-- Prompt + targets -->
     <section class="card">
       <h2 id="promptTitle">Prompt</h2>
-      <p id="promptText" class="sub">Choose a unit/level, then click “Load Prompt”.</p>
+      <p id="promptText" class="sub">Choose unit + level, then click “Next prompt”.</p>
       <div id="targetsBox" class="targets"></div>
     </section>
 
+    <!-- Recorder -->
     <section class="card">
       <h3>Record your answer</h3>
       <div class="audio-bar">
-        <button id="recBtn">🎙️ Start Recording</button>
+        <button id="recBtn">🎙️ Start</button>
         <button id="stopBtn" class="ghost" disabled>⏹ Stop</button>
-        <button id="playBtn" class="ghost" disabled>▶️ Play Last</button>
+        <span class="timer" id="timer">00:00</span>
         <span id="recStatus" class="status">Mic: idle</span>
         <div class="meter"><div id="meterFill"></div></div>
+        <button id="playBtn" class="ghost" disabled>▶️ Play</button>
+        <a id="dlLink" class="ghost hidden" download="recording.webm">⤓ Download</a>
         <audio id="player" class="hidden" controls></audio>
       </div>
-      <p class="warnline" id="sttWarn"></p>
-      <h4>Transcript (auto)</h4>
-      <textarea id="transcript" rows="6" placeholder="Your speech will appear here..." readonly></textarea>
-      <div style="margin-top:10px">
-        <button id="feedbackBtn">Get Feedback</button>
-        <button id="clearBtn" class="ghost">Clear</button>
+    </section>
+
+    <!-- Feedback -->
+    <section id="feedback" class="card hidden">
+      <h3>Feedback</h3>
+      <div class="fb-two">
+        <p><strong>What you did well:</strong> <span id="fbGood"></span></p>
+        <p><strong>Next step:</strong> <span id="fbNext"></span></p>
+        <div class="tag" id="fbCefr"></div>
+        <div class="tag mono" id="fbStats"></div>
       </div>
     </section>
 
-    <section id="feedback" class="card hidden">
-      <h3>Feedback (detailed)</h3>
-      <div id="feedbackBody"></div>
-      <div class="scores" id="scoreRow"></div>
-    </section>
+    <!-- Actions -->
+    <div class="row">
+      <div class="pill"><button id="getFbBtn">Get Feedback</button></div>
+      <div class="pill"><button id="submitBtn" class="ghost">Submit (to Sheets) — not connected</button></div>
+      <div class="pill"><button id="clearBtn" class="ghost">Clear</button></div>
+    </div>
 
+    <!-- Attempt preview (for copy/paste or later webhook) -->
     <section class="card">
       <details>
-        <summary>How this works</summary>
-        <ul>
-          <li>We record your voice locally and also run on-device speech-to-text.</li>
-          <li>No internet calls are needed for scoring; everything is client-side.</li>
-          <li>Feedback checks <em>length & clarity</em>, <em>topic keywords</em>, and <em>target language</em> (e.g., first conditional, signposting).</li>
-        </ul>
+        <summary>Attempt data (preview)</summary>
+        <pre id="attemptPreview" class="mono">{}</pre>
+        <button id="copyBtn" class="ghost">Copy</button>
       </details>
+      <p class="sub">Submit button is a placeholder. We’ll wire it to Google Sheets (Make.com / Apps Script) next.</p>
     </section>
   </main>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=2025-11-03"></script>
 </body>
 </html>
