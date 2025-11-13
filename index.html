@@ -1,182 +1,202 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>AI Speaking Coach — Units 1–8 (no 7)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Speaking App – Unit 1</title>
   <style>
-    /* ==== Option B: Light, clean, soft shadows ==== */
-    :root{
-      --bg:#ffffff; --text:#1f2937; --muted:#4b5563;
-      --card:#ffffff; --card-border:#e5e7eb; --soft:#f5f7fb;
-      --primary:#2563eb; --primary-ink:#ffffff; --accent:#3b82f6;
-      --warn-bg:#fff8e6; --warn-border:#f4d38c; --warn-text:#8a5b00;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:linear-gradient(180deg,#f8fafc 0%, #f3f4f6 100%);
-      color:var(--text);
-    }
-    header{padding:28px 16px 8px; text-align:center}
-    h1{margin:0 0 6px; font-weight:700; letter-spacing:.2px}
-    .sub{margin:0; color:var(--muted); font-size:14px}
-    main{max-width:980px; margin:24px auto; padding:0 16px}
-
-    /* Pills / controls */
-    .row{display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px}
-    .pill{
-      background:var(--card);
-      padding:10px 12px; border-radius:12px;
-      display:flex; align-items:center; gap:10px;
-      border:1px solid var(--card-border);
-      box-shadow:0 1px 1px rgba(0,0,0,.02);
-    }
-    label{color:var(--muted); font-size:13px}
-    select,button,input{
-      appearance:none; border:1px solid var(--card-border); outline:none;
-      background:#fff; color:var(--text);
-      padding:9px 12px; border-radius:10px; font-size:14px;
-    }
-    input{min-width:160px}
-    button{cursor:pointer; border:0; background:var(--primary); color:var(--primary-ink)}
-    button:hover{filter:brightness(0.98)}
-    button.ghost{background:#eef2ff; color:#1e40af; border:1px solid #dbeafe}
-    button.ghost:hover{background:#e0e7ff}
-
-    /* Cards */
-    .card{
-      background:var(--card);
-      border:1px solid var(--card-border);
-      border-radius:14px; padding:16px 18px; margin-bottom:16px;
-      box-shadow:0 8px 20px rgba(2,6,23,.06);
-    }
-
-    /* Prompt tags */
-    .targets{margin-top:10px; display:flex; flex-wrap:wrap; gap:8px}
-    .badge{
-      padding:6px 10px; border-radius:999px; background:var(--soft);
-      border:1px solid var(--card-border); color:#374151; font-size:12px
-    }
-
-    /* Recorder & meter */
-    .audio-bar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px}
-    .status{font-size:13px; color:var(--muted)}
-    .meter{width:140px; height:10px; border-radius:6px; background:#eef2f7; border:1px solid var(--card-border); overflow:hidden}
-    .meter > div{height:100%; background:var(--accent); width:0%}
-    .timer{font-variant-numeric:tabular-nums; background:#f8fafc; border:1px solid var(--card-border); padding:6px 10px; border-radius:10px}
-
-    .hidden{display:none}
-    .fb-two{
-      background:#f8fafc; border:1px solid var(--card-border);
-      border-radius:12px; padding:12px
-    }
-    .tag{
-      display:inline-block; margin-right:8px; margin-top:6px; padding:4px 8px; font-size:12px;
-      border-radius:999px; border:1px solid var(--card-border); background:#ffffff; color:#334155
-    }
-
-    /* Mic help */
-    .helpbar{
-      background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text);
-      padding:10px 12px; border-radius:10px; font-size:13px; display:none; margin-bottom:10px
-    }
-
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; color:#1f2937}
-    details > summary{cursor:pointer; color:#1e40af}
-    a#dlLink{padding:9px 12px; border-radius:10px; text-decoration:none; border:1px solid #dbeafe; color:#1e40af; background:#eef2ff}
-    a#dlLink:hover{background:#e0e7ff}
+    :root { --w: 760px; }
+    body { font-family: system-ui, Arial, sans-serif; max-width: var(--w); margin: 24px auto; padding: 0 12px; line-height: 1.4; }
+    h1 { margin: 0 0 6px; }
+    .muted { color: #555; font-size: 0.95rem; margin-top: 0; }
+    .row { margin: 12px 0; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
+    textarea { resize: vertical; }
+    button { padding: 10px 14px; border: 1px solid #ccc; border-radius: 999px; background: #f7f7f7; cursor: pointer; }
+    button[disabled] { opacity: .5; cursor: not-allowed; }
+    .stack { display: flex; gap: 8px; flex-wrap: wrap; }
+    .status { font-size: 0.95rem; }
+    .ok { color: #0a7a0a; }
+    .err { color: #a00; }
+    .box { border: 1px dashed #ddd; border-radius: 10px; padding: 10px; background: #fafafa; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>AI Speaking Coach</h1>
-    <p class="sub">Units 1–8 (excluding 7) • Easy / Medium / Hard • Mic recording + playback • Two-line feedback</p>
-  </header>
+  <h1>Speaking App – Unit 1</h1>
+  <p class="muted">Record your answer, then upload. Your teacher receives the file and a log entry.</p>
 
-  <main>
-    <!-- Mic help / permissions -->
-    <div id="micHelp" class="helpbar">
-      Microphone is blocked or unavailable. In Chrome: click the lock icon → Site settings → Allow Microphone, then reload. On iPhone: open Settings → Safari → Microphone → Allow.
+  <!-- ====== CONFIG (edit just these two lines) ====== -->
+  <script>
+    // 1) Paste your deployed Apps Script Web App URL (must end with /exec)
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzkh6iYdSuMnGNZKBJHYs2oYpXAfSzDj9MV0SIRsmrZfeMxjw2UdYFt78YFQIeBcPTl/exec";
+    // 2) Must match the TOKEN value you set in GAS Script Properties
+    const TOKEN   = "E423_SECRET_2025";
+  </script>
+  <!-- ============================================== -->
+
+  <div class="row">
+    <label>Your name</label>
+    <input id="name" placeholder="First Last" />
+  </div>
+
+  <div class="row">
+    <label>Class / Level</label>
+    <input id="level" placeholder="E423" value="E423" />
+  </div>
+
+  <div class="row">
+    <label>Prompt (Unit 1)</label>
+    <textarea id="prompt" rows="3" readonly>Talk about an endangered animal, where it lives, why it is at risk, and what people can do to protect it.</textarea>
+  </div>
+
+  <div class="row box">
+    <div class="stack">
+      <button id="btnStart">🎙️ Start</button>
+      <button id="btnStop" disabled>⏹️ Stop</button>
+      <button id="btnPlay" disabled>▶️ Play</button>
     </div>
-
-    <!-- Student metadata -->
     <div class="row">
-      <div class="pill"><label>Name</label><input id="studentName" placeholder="e.g., Ahmed Al-H."></div>
-      <div class="pill"><label>ID</label><input id="studentId" placeholder="e.g., 2414062"></div>
-      <div class="pill"><label>Group</label><input id="studentGroup" placeholder="e.g., 405 / 406"></div>
+      <audio id="player" controls></audio>
     </div>
-
-    <!-- Unit / Level / Prompt controls -->
-    <div class="row">
-      <div class="pill">
-        <label for="unitSelect">Unit</label>
-        <select id="unitSelect"></select>
+    <div class="stack">
+      <div>
+        <label>Duration (seconds)</label>
+        <input id="seconds" type="number" readonly />
       </div>
-      <div class="pill">
-        <label for="levelSelect">Level</label>
-        <select id="levelSelect">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </div>
-      <div class="pill">
-        <button id="loadPromptBtn">Next prompt</button>
+      <div>
+        <label>Estimated words (optional)</label>
+        <input id="words" type="number" placeholder="e.g., 75" />
       </div>
     </div>
+  </div>
 
-    <!-- Prompt + targets -->
-    <section class="card">
-      <h2 id="promptTitle" style="margin:.2rem 0 .4rem 0;">Prompt</h2>
-      <p id="promptText" class="sub">Choose unit + level, then click “Next prompt”.</p>
-      <div id="targetsBox" class="targets"></div>
-    </section>
+  <div class="row">
+    <label>Optional: Transcript (type what you said)</label>
+    <textarea id="transcript" rows="4" placeholder="Write what you said (optional)"></textarea>
+  </div>
 
-    <!-- Recorder -->
-    <section class="card">
-      <h3 style="margin-top:0">Record your answer</h3>
-      <div class="audio-bar">
-        <button id="recBtn">🎙️ Start</button>
-        <button id="stopBtn" class="ghost" disabled>⏹ Stop</button>
-        <span class="timer" id="timer">00:00</span>
-        <span id="recStatus" class="status">Mic: idle</span>
-        <div class="meter"><div id="meterFill"></div></div>
-        <button id="playBtn" class="ghost" disabled>▶️ Play</button>
-        <a id="dlLink" class="hidden" download="recording.webm">⤓ Download</a>
-        <audio id="player" class="hidden" controls></audio>
-      </div>
-    </section>
+  <div class="row stack">
+    <button id="btnUpload" disabled>⬆️ Upload to Teacher</button>
+    <span id="status" class="status"></span>
+  </div>
 
-    <!-- Feedback -->
-    <section id="feedback" class="card hidden">
-      <h3 style="margin-top:0">Feedback</h3>
-      <div class="fb-two">
-        <p><strong>What you did well:</strong> <span id="fbGood"></span></p>
-        <p><strong>Next step:</strong> <span id="fbNext"></span></p>
-        <div class="tag" id="fbCefr"></div>
-        <div class="tag mono" id="fbStats"></div>
-      </div>
-    </section>
+  <div class="row muted">
+    If the mic prompt doesn’t appear, check: Site settings → Microphone → Allow while visiting this site.
+  </div>
 
-    <!-- Actions -->
-    <div class="row">
-      <div class="pill"><button id="getFbBtn">Get Feedback</button></div>
-      <div class="pill"><button id="submitBtn" class="ghost">Submit (to Sheets) — not connected</button></div>
-      <div class="pill"><button id="clearBtn" class="ghost">Clear</button></div>
-    </div>
+  <script>
+    // ----- helpers -----
+    const el = id => document.getElementById(id);
+    const nameEl = el('name');
+    const levelEl = el('level');
+    const promptEl = el('prompt');
+    const transcriptEl = el('transcript');
+    const wordsEl = el('words');
+    const secondsEl = el('seconds');
+    const player = el('player');
+    const statusEl = el('status');
+    const bStart = el('btnStart');
+    const bStop = el('btnStop');
+    const bPlay = el('btnPlay');
+    const bUpload = el('btnUpload');
 
-    <!-- Attempt preview (copy or use for webhook later) -->
-    <section class="card">
-      <details>
-        <summary>Attempt data (preview)</summary>
-        <pre id="attemptPreview" class="mono">{}</pre>
-        <button id="copyBtn" class="ghost">Copy</button>
-      </details>
-      <p class="sub">Submit is a placeholder. We’ll wire it to Google Sheets (Make.com / Apps Script) next.</p>
-    </section>
-  </main>
+    let mediaRecorder, chunks = [], recordedBlob = null, startedAt = null;
 
-  <script src="script.js?v=light-b"></script>
+    function setStatus(msg, type) {
+      statusEl.textContent = msg || "";
+      statusEl.className = "status" + (type ? " " + type : "");
+    }
+
+    function safeSlug(s, max=24) {
+      return s.slice(0, max).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+
+    function makeFilename(name, prompt) {
+      const safeName = safeSlug(name, 32);
+      const shortPrompt = safeSlug(prompt, 24);
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      return `${safeName}-u1-${shortPrompt}-${ts}`;
+    }
+
+    // ----- recording -----
+    bStart.addEventListener('click', async () => {
+      setStatus("");
+      chunks = []; recordedBlob = null; player.src = "";
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          recordedBlob = new Blob(chunks, { type: 'audio/webm' });
+          player.src = URL.createObjectURL(recordedBlob);
+          bPlay.disabled = false;
+          bUpload.disabled = false;
+          const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+          secondsEl.value = secs;
+          setStatus("Stopped. Ready to upload.");
+        };
+        mediaRecorder.start();
+        startedAt = Date.now();
+        bStart.disabled = true;
+        bStop.disabled = false;
+        bPlay.disabled = true;
+        bUpload.disabled = true;
+        setStatus("Recording…");
+      } catch (err) {
+        setStatus("Mic blocked or unavailable: " + err, "err");
+      }
+    });
+
+    bStop.addEventListener('click', () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        bStart.disabled = false;
+        bStop.disabled = true;
+      }
+    });
+
+    bPlay.addEventListener('click', () => {
+      if (player.src) player.play();
+    });
+
+    // ----- upload -----
+    bUpload.addEventListener('click', async () => {
+      if (!recordedBlob) return setStatus("Nothing recorded yet.", "err");
+      if (!nameEl.value.trim()) return setStatus("Please enter your name.", "err");
+      if (!GAS_URL || GAS_URL.indexOf("/exec") === -1) return setStatus("GAS_URL missing or not /exec.", "err");
+
+      const filename = makeFilename(nameEl.value, promptEl.value);
+      const fd = new FormData();
+      fd.append('token', TOKEN);
+      fd.append('name', nameEl.value.trim());
+      fd.append('unit', 'Unit 1');
+      fd.append('level', levelEl.value.trim());
+      fd.append('prompt', promptEl.value.trim());
+      fd.append('transcript', transcriptEl.value.trim());
+      fd.append('words', wordsEl.value.trim());
+      fd.append('seconds', secondsEl.value.trim());
+      fd.append('overall', '');
+      fd.append('grammar_ok', '');
+      fd.append('keyword_hits', '');
+      fd.append('audio', recordedBlob, filename + '.webm');
+
+      try {
+        setStatus("Uploading…");
+        bUpload.disabled = true;
+        const res = await fetch(GAS_URL, { method: 'POST', body: fd });
+        const json = await res.json().catch(() => ({}));
+        if (json && json.ok) {
+          setStatus("Uploaded ✓ Link saved in Sheet.", "ok");
+        } else {
+          setStatus("Upload failed: " + (json.error || res.status + " " + res.statusText), "err");
+          bUpload.disabled = false;
+        }
+      } catch (err) {
+        setStatus("Network error: " + err, "err");
+        bUpload.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>
