@@ -24,16 +24,21 @@
 </head>
 <body>
   <h1>Speaking App – Unit 1</h1>
-  <p class="muted">Record your answer, then upload. Your teacher receives the file and a log entry.</p>
+  <p class="muted">Choose a prompt, record your answer, then upload.</p>
 
-  <!-- ====== CONFIG (edit just these two lines) ====== -->
+  <!-- ====== CONFIG ====== -->
   <script>
-    // 1) Paste your deployed Apps Script Web App URL (must end with /exec)
     const GAS_URL = "https://script.google.com/macros/s/AKfycbzkh6iYdSuMnGNZKBJHYs2oYpXAfSzDj9MV0SIRsmrZfeMxjw2UdYFt78YFQIeBcPTl/exec";
-    // 2) Must match the TOKEN value you set in GAS Script Properties
     const TOKEN   = "E423_SECRET_2025";
+
+    // Unit 1 prompts (edit anytime)
+    const PROMPTS = {
+      easy:   "Describe an endangered animal. Say where it lives, one reason it is at risk, and one way people can help.",
+      medium: "Talk about an endangered animal in more detail: habitat, main threats, and two practical actions people or governments can take.",
+      hard:   "Explain the causes and consequences of endangerment for one species. Evaluate which conservation measures are most effective and why."
+    };
   </script>
-  <!-- ============================================== -->
+  <!-- ===================== -->
 
   <div class="row">
     <label>Your name</label>
@@ -46,8 +51,17 @@
   </div>
 
   <div class="row">
+    <label>Prompt level</label>
+    <select id="promptLevel">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </div>
+
+  <div class="row">
     <label>Prompt (Unit 1)</label>
-    <textarea id="prompt" rows="3" readonly>Talk about an endangered animal, where it lives, why it is at risk, and what people can do to protect it.</textarea>
+    <textarea id="prompt" rows="3" readonly></textarea>
   </div>
 
   <div class="row box">
@@ -86,11 +100,12 @@
   </div>
 
   <script>
-    // ----- helpers -----
+    // ----- wire prompts -----
     const el = id => document.getElementById(id);
     const nameEl = el('name');
     const levelEl = el('level');
     const promptEl = el('prompt');
+    const promptLevelEl = el('promptLevel');
     const transcriptEl = el('transcript');
     const wordsEl = el('words');
     const secondsEl = el('seconds');
@@ -101,6 +116,15 @@
     const bPlay = el('btnPlay');
     const bUpload = el('btnUpload');
 
+    // initialize prompt
+    function setPromptFromLevel() {
+      const lvl = promptLevelEl.value;
+      promptEl.value = PROMPTS[lvl] || "";
+    }
+    promptLevelEl.addEventListener('change', setPromptFromLevel);
+    setPromptFromLevel();
+
+    // ----- helpers -----
     let mediaRecorder, chunks = [], recordedBlob = null, startedAt = null;
 
     function setStatus(msg, type) {
@@ -112,11 +136,11 @@
       return s.slice(0, max).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     }
 
-    function makeFilename(name, prompt) {
+    function makeFilename(name, prompt, lvl) {
       const safeName = safeSlug(name, 32);
       const shortPrompt = safeSlug(prompt, 24);
       const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      return `${safeName}-u1-${shortPrompt}-${ts}`;
+      return `${safeName}-u1-${lvl}-${shortPrompt}-${ts}`;
     }
 
     // ----- recording -----
@@ -166,13 +190,15 @@
       if (!nameEl.value.trim()) return setStatus("Please enter your name.", "err");
       if (!GAS_URL || GAS_URL.indexOf("/exec") === -1) return setStatus("GAS_URL missing or not /exec.", "err");
 
-      const filename = makeFilename(nameEl.value, promptEl.value);
+      const lvl = promptLevelEl.value;
+      const filename = makeFilename(nameEl.value, promptEl.value, lvl);
+
       const fd = new FormData();
       fd.append('token', TOKEN);
       fd.append('name', nameEl.value.trim());
       fd.append('unit', 'Unit 1');
       fd.append('level', levelEl.value.trim());
-      fd.append('prompt', promptEl.value.trim());
+      fd.append('prompt', `[${lvl}] ${promptEl.value.trim()}`);
       fd.append('transcript', transcriptEl.value.trim());
       fd.append('words', wordsEl.value.trim());
       fd.append('seconds', secondsEl.value.trim());
@@ -200,3 +226,5 @@
   </script>
 </body>
 </html>
+
+
