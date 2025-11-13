@@ -1,228 +1,427 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Speaking App – Unit 1</title>
+  <meta charset="UTF-8" />
+  <title>Speaking Practice – Unit 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    :root { --w: 760px; }
-    body { font-family: system-ui, Arial, sans-serif; max-width: var(--w); margin: 24px auto; padding: 0 12px; line-height: 1.4; }
-    h1 { margin: 0 0 6px; }
-    .muted { color: #555; font-size: 0.95rem; margin-top: 0; }
-    .row { margin: 12px 0; }
-    label { display: block; font-weight: 600; margin-bottom: 6px; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 1rem; }
-    textarea { resize: vertical; }
-    button { padding: 10px 14px; border: 1px solid #ccc; border-radius: 999px; background: #f7f7f7; cursor: pointer; }
-    button[disabled] { opacity: .5; cursor: not-allowed; }
-    .stack { display: flex; gap: 8px; flex-wrap: wrap; }
-    .status { font-size: 0.95rem; }
-    .ok { color: #0a7a0a; }
-    .err { color: #a00; }
-    .box { border: 1px dashed #ddd; border-radius: 10px; padding: 10px; background: #fafafa; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f4f4f8;
+      color: #222;
+    }
+
+    .app {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 4px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 0;
+      color: #555;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .meta-row label {
+      font-size: 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    input[type="text"] {
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 0.9rem;
+    }
+
+    .prompt-selector {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    .prompt-btn {
+      flex: 1;
+      min-width: 70px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid #ccc;
+      background: #f0f0f5;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .prompt-btn.active {
+      background: #2563eb;
+      color: white;
+      border-color: #2563eb;
+    }
+
+    .prompt-text {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e0e0e0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .record {
+      background: #dc2626;
+      color: white;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .stop {
+      background: #fbbf24;
+      color: #222;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .play {
+      background: #16a34a;
+      color: white;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .upload {
+      background: #2563eb;
+      color: white;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    .disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .timer {
+      font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .status {
+      font-size: 0.85rem;
+      color: #555;
+      min-height: 1.2em;
+      margin-top: 4px;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .footer {
+      margin-top: 16px;
+      font-size: 0.75rem;
+      color: #777;
+    }
   </style>
 </head>
 <body>
-  <h1>Speaking App – Unit 1</h1>
-  <p class="muted">Choose a prompt, record your answer, then upload.</p>
+  <div class="app">
+    <h1>Speaking Practice – Unit 1</h1>
+    <h2>Animals – Endangered species & comparisons</h2>
 
-  <!-- ====== CONFIG ====== -->
+    <div class="meta-row">
+      <label>
+        Student ID
+        <input type="text" id="studentId" placeholder="e.g. 2412345" />
+      </label>
+      <label>
+        Class Code
+        <input type="text" id="classCode" value="E423" />
+      </label>
+    </div>
+
+    <div class="prompt-selector">
+      <button class="prompt-btn active" data-prompt="1">Prompt 1</button>
+      <button class="prompt-btn" data-prompt="2">Prompt 2</button>
+      <button class="prompt-btn" data-prompt="3">Prompt 3</button>
+    </div>
+
+    <div id="promptText" class="prompt-text">
+      Talk about an endangered animal. Say:
+      • where it lives  
+      • why it is at risk  
+      • what people can do to protect it.
+    </div>
+
+    <div class="timer">
+      Time: <span id="timerDisplay">00:00</span>
+    </div>
+
+    <div class="controls">
+      <button id="recordBtn" class="record">Start Recording</button>
+      <button id="stopBtn" class="stop disabled">Stop</button>
+    </div>
+
+    <button id="playBtn" class="play disabled">Play Recording</button>
+    <audio id="audioPlayer" controls style="display:none;"></audio>
+
+    <button id="uploadBtn" class="upload disabled">Send to Teacher</button>
+
+    <div id="status" class="status"></div>
+
+    <div class="footer">
+      Your recording, unit, prompt number, student ID, class code, and time will be sent securely to your teacher.
+    </div>
+  </div>
+
   <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzkh6iYdSuMnGNZKBJHYs2oYpXAfSzDj9MV0SIRsmrZfeMxjw2UdYFt78YFQIeBcPTl/exec";
-    const TOKEN   = "E423_SECRET_2025";
+    // ====== CONFIG ======
+    const WEBHOOK_URL = "https://hook.eu2.make.com/mgiljprq2kdwb4my635a32iq5xwllgv8";
+    const UNIT_NAME = "Unit 1";
 
-    // Unit 1 prompts (edit anytime)
-    const PROMPTS = {
-      easy:   "Describe an endangered animal. Say where it lives, one reason it is at risk, and one way people can help.",
-      medium: "Talk about an endangered animal in more detail: habitat, main threats, and two practical actions people or governments can take.",
-      hard:   "Explain the causes and consequences of endangerment for one species. Evaluate which conservation measures are most effective and why."
+    const prompts = {
+      1: "Talk about an endangered animal. Say:\n• where it lives\n• why it is at risk\n• what people can do to protect it.",
+      2: "Talk about your favourite animal. Say:\n• what it looks like\n• where it lives\n• what it eats\n• why you like it.",
+      3: "Compare two animals (for example, a lion and a camel). Say:\n• how they are similar\n• how they are different\n• which one you prefer and why."
     };
-  </script>
-  <!-- ===================== -->
 
-  <div class="row">
-    <label>Your name</label>
-    <input id="name" placeholder="First Last" />
-  </div>
+    // ====== DOM ELEMENTS ======
+    const promptButtons = document.querySelectorAll(".prompt-btn");
+    const promptTextEl = document.getElementById("promptText");
+    const timerDisplay = document.getElementById("timerDisplay");
+    const recordBtn = document.getElementById("recordBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const playBtn = document.getElementById("playBtn");
+    const uploadBtn = document.getElementById("uploadBtn");
+    const statusEl = document.getElementById("status");
+    const studentIdInput = document.getElementById("studentId");
+    const classCodeInput = document.getElementById("classCode");
+    const audioPlayer = document.getElementById("audioPlayer");
 
-  <div class="row">
-    <label>Class / Level</label>
-    <input id="level" placeholder="E423" value="E423" />
-  </div>
+    // ====== STATE ======
+    let currentPrompt = 1;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let timerInterval = null;
+    let seconds = 0;
+    let recordedBlob = null;
 
-  <div class="row">
-    <label>Prompt level</label>
-    <select id="promptLevel">
-      <option value="easy">Easy</option>
-      <option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option>
-    </select>
-  </div>
-
-  <div class="row">
-    <label>Prompt (Unit 1)</label>
-    <textarea id="prompt" rows="3" readonly></textarea>
-  </div>
-
-  <div class="row box">
-    <div class="stack">
-      <button id="btnStart">🎙️ Start</button>
-      <button id="btnStop" disabled>⏹️ Stop</button>
-      <button id="btnPlay" disabled>▶️ Play</button>
-    </div>
-    <div class="row">
-      <audio id="player" controls></audio>
-    </div>
-    <div class="stack">
-      <div>
-        <label>Duration (seconds)</label>
-        <input id="seconds" type="number" readonly />
-      </div>
-      <div>
-        <label>Estimated words (optional)</label>
-        <input id="words" type="number" placeholder="e.g., 75" />
-      </div>
-    </div>
-  </div>
-
-  <div class="row">
-    <label>Optional: Transcript (type what you said)</label>
-    <textarea id="transcript" rows="4" placeholder="Write what you said (optional)"></textarea>
-  </div>
-
-  <div class="row stack">
-    <button id="btnUpload" disabled>⬆️ Upload to Teacher</button>
-    <span id="status" class="status"></span>
-  </div>
-
-  <div class="row muted">
-    If the mic prompt doesn’t appear, check: Site settings → Microphone → Allow while visiting this site.
-  </div>
-
-  <script>
-    // ----- wire prompts -----
-    const el = id => document.getElementById(id);
-    const nameEl = el('name');
-    const levelEl = el('level');
-    const promptEl = el('prompt');
-    const promptLevelEl = el('promptLevel');
-    const transcriptEl = el('transcript');
-    const wordsEl = el('words');
-    const secondsEl = el('seconds');
-    const player = el('player');
-    const statusEl = el('status');
-    const bStart = el('btnStart');
-    const bStop = el('btnStop');
-    const bPlay = el('btnPlay');
-    const bUpload = el('btnUpload');
-
-    // initialize prompt
-    function setPromptFromLevel() {
-      const lvl = promptLevelEl.value;
-      promptEl.value = PROMPTS[lvl] || "";
-    }
-    promptLevelEl.addEventListener('change', setPromptFromLevel);
-    setPromptFromLevel();
-
-    // ----- helpers -----
-    let mediaRecorder, chunks = [], recordedBlob = null, startedAt = null;
-
-    function setStatus(msg, type) {
-      statusEl.textContent = msg || "";
-      statusEl.className = "status" + (type ? " " + type : "");
+    // ====== PROMPT HANDLING ======
+    function setPrompt(promptNumber) {
+      currentPrompt = promptNumber;
+      promptButtons.forEach(btn => {
+        btn.classList.toggle("active", Number(btn.dataset.prompt) === promptNumber);
+      });
+      promptTextEl.textContent = prompts[promptNumber];
     }
 
-    function safeSlug(s, max=24) {
-      return s.slice(0, max).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    promptButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const p = Number(btn.dataset.prompt);
+        setPrompt(p);
+      });
+    });
+
+    // ====== TIMER ======
+    function startTimer() {
+      seconds = 0;
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        seconds++;
+        updateTimerDisplay();
+      }, 1000);
     }
 
-    function makeFilename(name, prompt, lvl) {
-      const safeName = safeSlug(name, 32);
-      const shortPrompt = safeSlug(prompt, 24);
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      return `${safeName}-u1-${lvl}-${shortPrompt}-${ts}`;
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
     }
 
-    // ----- recording -----
-    bStart.addEventListener('click', async () => {
-      setStatus("");
-      chunks = []; recordedBlob = null; player.src = "";
+    function updateTimerDisplay() {
+      const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const secs = String(seconds % 60).padStart(2, "0");
+      timerDisplay.textContent = `${mins}:${secs}`;
+    }
+
+    // ====== RECORDING ======
+    async function startRecording() {
+      statusEl.textContent = "Requesting microphone access...";
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        mediaRecorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-        mediaRecorder.onstop = () => {
-          recordedBlob = new Blob(chunks, { type: 'audio/webm' });
-          player.src = URL.createObjectURL(recordedBlob);
-          bPlay.disabled = false;
-          bUpload.disabled = false;
-          const secs = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
-          secondsEl.value = secs;
-          setStatus("Stopped. Ready to upload.");
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
         };
+
+        mediaRecorder.onstart = () => {
+          statusEl.textContent = "Recording... speak now.";
+          recordBtn.classList.add("disabled");
+          recordBtn.disabled = true;
+
+          stopBtn.classList.remove("disabled");
+          stopBtn.disabled = false;
+
+          playBtn.classList.add("disabled");
+          playBtn.disabled = true;
+
+          uploadBtn.classList.add("disabled");
+          uploadBtn.disabled = true;
+
+          startTimer();
+        };
+
+        mediaRecorder.onstop = () => {
+          stopTimer();
+          recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const audioURL = URL.createObjectURL(recordedBlob);
+          audioPlayer.src = audioURL;
+          audioPlayer.style.display = "block";
+
+          statusEl.textContent = "Recording finished. You can listen or send it to your teacher.";
+
+          playBtn.classList.remove("disabled");
+          playBtn.disabled = false;
+
+          uploadBtn.classList.remove("disabled");
+          uploadBtn.disabled = false;
+
+          recordBtn.classList.remove("disabled");
+          recordBtn.disabled = false;
+        };
+
         mediaRecorder.start();
-        startedAt = Date.now();
-        bStart.disabled = true;
-        bStop.disabled = false;
-        bPlay.disabled = true;
-        bUpload.disabled = true;
-        setStatus("Recording…");
       } catch (err) {
-        setStatus("Mic blocked or unavailable: " + err, "err");
+        console.error(err);
+        statusEl.textContent = "Microphone error. Please allow access in your browser settings.";
       }
-    });
+    }
 
-    bStop.addEventListener('click', () => {
-      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    function stopRecording() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-        bStart.disabled = false;
-        bStop.disabled = true;
+        stopBtn.classList.add("disabled");
+        stopBtn.disabled = true;
+        statusEl.textContent = "Stopping...";
       }
-    });
+    }
 
-    bPlay.addEventListener('click', () => {
-      if (player.src) player.play();
-    });
+    // ====== PLAYBACK ======
+    function playRecording() {
+      if (!recordedBlob) {
+        statusEl.textContent = "No recording yet.";
+        return;
+      }
+      audioPlayer.play().catch(err => {
+        console.error(err);
+        statusEl.textContent = "Cannot play audio. Try again.";
+      });
+    }
 
-    // ----- upload -----
-    bUpload.addEventListener('click', async () => {
-      if (!recordedBlob) return setStatus("Nothing recorded yet.", "err");
-      if (!nameEl.value.trim()) return setStatus("Please enter your name.", "err");
-      if (!GAS_URL || GAS_URL.indexOf("/exec") === -1) return setStatus("GAS_URL missing or not /exec.", "err");
+    // ====== UPLOAD ======
+    async function uploadRecording() {
+      if (!recordedBlob) {
+        statusEl.textContent = "Please record something first.";
+        return;
+      }
 
-      const lvl = promptLevelEl.value;
-      const filename = makeFilename(nameEl.value, promptEl.value, lvl);
+      const studentId = studentIdInput.value.trim() || "anonymous";
+      const classCode = classCodeInput.value.trim() || "unknown";
+      const now = new Date();
+      const timestamp = now.toISOString();
 
-      const fd = new FormData();
-      fd.append('token', TOKEN);
-      fd.append('name', nameEl.value.trim());
-      fd.append('unit', 'Unit 1');
-      fd.append('level', levelEl.value.trim());
-      fd.append('prompt', `[${lvl}] ${promptEl.value.trim()}`);
-      fd.append('transcript', transcriptEl.value.trim());
-      fd.append('words', wordsEl.value.trim());
-      fd.append('seconds', secondsEl.value.trim());
-      fd.append('overall', '');
-      fd.append('grammar_ok', '');
-      fd.append('keyword_hits', '');
-      fd.append('audio', recordedBlob, filename + '.webm');
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+
+      const filename = `${studentId}_U1_P${currentPrompt}_${y}${m}${d}_${hh}${mm}${ss}.webm`;
+
+      const formData = new FormData();
+      formData.append("audio", recordedBlob, filename);
+      formData.append("filename", filename);
+      formData.append("unit", UNIT_NAME);
+      formData.append("promptNumber", String(currentPrompt));
+      formData.append("studentId", studentId);
+      formData.append("classCode", classCode);
+      formData.append("timestamp", timestamp);
+      formData.append("durationSeconds", String(seconds));
+
+      statusEl.textContent = "Uploading... please wait.";
+
+      uploadBtn.classList.add("disabled");
+      uploadBtn.disabled = true;
 
       try {
-        setStatus("Uploading…");
-        bUpload.disabled = true;
-        const res = await fetch(GAS_URL, { method: 'POST', body: fd });
-        const json = await res.json().catch(() => ({}));
-        if (json && json.ok) {
-          setStatus("Uploaded ✓ Link saved in Sheet.", "ok");
-        } else {
-          setStatus("Upload failed: " + (json.error || res.status + " " + res.statusText), "err");
-          bUpload.disabled = false;
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          throw new Error("Upload failed with status " + res.status);
         }
+
+        statusEl.textContent = "Uploaded successfully. Your teacher has received your recording.";
       } catch (err) {
-        setStatus("Network error: " + err, "err");
-        bUpload.disabled = false;
+        console.error(err);
+        statusEl.textContent = "Upload error. Please try again later.";
+        uploadBtn.classList.remove("disabled");
+        uploadBtn.disabled = false;
       }
-    });
+    }
+
+    // ====== EVENT LISTENERS ======
+    recordBtn.addEventListener("click", startRecording);
+    stopBtn.addEventListener("click", stopRecording);
+    playBtn.addEventListener("click", playRecording);
+    uploadBtn.addEventListener("click", uploadRecording);
   </script>
 </body>
 </html>
