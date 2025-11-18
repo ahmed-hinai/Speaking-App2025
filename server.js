@@ -1,0 +1,53 @@
+import express from "express";
+import multer from "multer";
+import { OpenAI } from "openai"; // OpenAI SDK
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Set up multer for handling incoming audio files
+const upload = multer();
+
+// Set up OpenAI client
+const client = new OpenAI({
+  apiKey: "YOUR_OPENAI_API_KEY" // Replace with your OpenAI API key
+});
+
+// Endpoint for analyzing the audio file
+app.post("/analyze", upload.single("audio"), async (req, res) => {
+  try {
+    // Convert the uploaded file to base64
+    const audioBase64 = req.file.buffer.toString("base64");
+
+    // Send the audio to OpenAI's GPT (or Whisper for transcription)
+    const response = await client.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        { role: "system", content: "You are an ESL speaking examiner." },
+        { 
+          role: "user", 
+          content: `Analyze the following student's speech, and provide structured feedback based on grammar, pronunciation, fluency, and task completion. Return the feedback in a clear, readable format.` 
+        },
+        { role: "user", content: audioBase64 }
+      ]
+    });
+
+    // Extract the feedback text from the response
+    const feedback = response.choices[0].message.content;
+
+    // Send back the feedback to the frontend
+    res.json({ feedback });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error analyzing audio." });
+  }
+});
+
+app.use(express.static("public"));
+
+// Start the server
+app.listen(port, () => {
+  console.log(`Server running on http://localhost:${port}`);
+});
+

@@ -65,12 +65,12 @@
 
     .prompt-btn {
       flex: 1;
-      min-width: 70px;
+      min-width: 20px;
       padding: 8px 10px;
       border-radius: 999px;
       border: 1px solid #ccc;
       background: #f0f0f5;
-      font-size: 0.9rem;
+      font-size: 1.9rem;
       cursor: pointer;
     }
 
@@ -87,6 +87,16 @@
       border: 1px solid #e0e0e0;
       font-size: 0.95rem;
       line-height: 1.4;
+      margin-bottom: 16px;
+    }
+    .feedback-text {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e0e0e0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      margin-top: 16px;
       margin-bottom: 16px;
     }
 
@@ -204,9 +214,11 @@
     <button id="playBtn" class="play disabled">Play Recording</button>
     <audio id="audioPlayer" controls style="display:none;"></audio>
 
-    <button id="uploadBtn" class="upload disabled">Send to Teacher</button>
-
+    <button id="uploadBtn" class="upload disabled">Download Audio</button>
+    <button id="feedbackBtn" class="feedback disabled">Asess Recording</button>
+    <div id="feedbackText" class="feedback-text">Loading feedback..</div>
     <div id="status" class="status"></div>
+
 
     <div class="footer">
       Your recording, unit, prompt number, student ID, class code, and time will be sent securely to your teacher.
@@ -244,6 +256,8 @@
     let timerInterval = null;
     let seconds = 0;
     let recordedBlob = null;
+    let studentId = null;
+    let classCode = null;
 
     // ====== PROMPT HANDLING ======
     function setPrompt(promptNumber) {
@@ -311,6 +325,9 @@
 
           uploadBtn.classList.add("disabled");
           uploadBtn.disabled = true;
+          feedbackBtn.classList.add("disabled");
+          feedbackBtn.disabled = true;
+
 
           startTimer();
         };
@@ -329,7 +346,8 @@
 
           uploadBtn.classList.remove("disabled");
           uploadBtn.disabled = false;
-
+          feedbackBtn.classList.remove("disabled");
+          feedbackBtn.disabled = false;
           recordBtn.classList.remove("disabled");
           recordBtn.disabled = false;
         };
@@ -362,60 +380,126 @@
       });
     }
 
-    // ====== UPLOAD ======
-    async function uploadRecording() {
-      if (!recordedBlob) {
-        statusEl.textContent = "Please record something first.";
-        return;
-      }
+// ====== DOWNLOAD AUDIO AND OPEN GOOGLE DRIVE ======
+async function uploadRecording() {
+  if (!recordedBlob) {
+    statusEl.textContent = "Please record something first.";
+    return;
+  }
 
-      const studentId = studentIdInput.value.trim() || "anonymous";
-      const classCode = classCodeInput.value.trim() || "unknown";
-      const now = new Date();
-      const timestamp = now.toISOString();
+  const studentId = studentIdInput.value.trim();
+  const classCode = classCodeInput.value.trim();
+  // ---- build filename with metadata ----
+  if (!studentId){
+    statusEl.textContent = "Please enter your student ID";
+    return;
+  }
+  
+  if (!classCode) {
+    statusEl.textContent = "Please enter your class code"
+    return;
+  }
 
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
 
-      const filename = `${studentId}_U1_P${currentPrompt}_${y}${m}${d}_${hh}${mm}${ss}.webm`;
+  const now = new Date();
 
-      const formData = new FormData();
-      formData.append("audio", recordedBlob, filename);
-      formData.append("filename", filename);
-      formData.append("unit", UNIT_NAME);
-      formData.append("promptNumber", String(currentPrompt));
-      formData.append("studentId", studentId);
-      formData.append("classCode", classCode);
-      formData.append("timestamp", timestamp);
-      formData.append("durationSeconds", String(seconds));
+  const y  = now.getFullYear();
+  const m  = String(now.getMonth() + 1).padStart(2, "0");
+  const d  = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
 
-      statusEl.textContent = "Uploading... please wait.";
+  const filename = `${studentId}_U${UNIT_NAME}_P${currentPrompt}_${classCode}_${y}${m}${d}_${hh}${mm}${ss}.webm`;
 
-      uploadBtn.classList.add("disabled");
-      uploadBtn.disabled = true;
+  statusEl.textContent = "Processing...";
+  uploadBtn.classList.add("disabled");
+  uploadBtn.disabled = true;
 
-      try {
-        const res = await fetch(WEBHOOK_URL, {
-          method: "POST",
-          body: formData
-        });
+  try {
+    // ---- Download to device ----
+    const url = URL.createObjectURL(recordedBlob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
 
-        if (!res.ok) {
-          throw new Error("Upload failed with status " + res.status);
-        }
 
-        statusEl.textContent = "Uploaded successfully. Your teacher has received your recording.";
-      } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Upload error. Please try again later.";
-        uploadBtn.classList.remove("disabled");
-        uploadBtn.disabled = false;
-      }
+    const googleDriveFolderUrl = "https://drive.google.com/drive/folders/1Vhk_9L1Cbbyedz4TZULG74alHmfzpwhK";
+    if (window.confirm("Please upload your audio file to google drive. A webpage will open to the folder where you should upload your file.")) {
+      txt = "OK!"
+      window.open(googleDriveFolderUrl, 'GoogleDrivePage');
     }
+
+
+    statusEl.innerHTML = `
+      Download complete!<br>
+      File: ${filename}<br>
+      Google Drive folder opened in new tab. Please upload your audio file.
+    `;
+
+  } catch (err) {
+    console.error("Download failed:", err);
+    statusEl.textContent = "Download failed. Please try again.";
+  } finally {
+    uploadBtn.classList.remove("disabled");
+    uploadBtn.disabled = false;
+  }
+}
+
+// ====== Frontend - Analyze Audio and Fetch Feedback ======
+const feedbackBtn = document.getElementById("feedbackBtn");
+const feedbackText = document.getElementById("feedbackText");
+
+feedbackBtn.addEventListener("click", analyzeRecording);
+
+async function analyzeRecording() {
+  if (!recordedBlob) {
+    statusEl.textContent = "Please record something first.";
+    return;
+  }
+
+  // Disable feedback button during processing
+  feedbackText.textContent = "Analyzing your speech...";
+  feedbackBtn.disabled = true;
+
+  const formData = new FormData();
+  formData.append("audio", recordedBlob, "recording.webm");
+
+  try {
+    // Send the audio file to the backend for LLM processing
+    const response = await fetch("http://localhost:3000/analyze", {
+      method: "POST",
+      body: formData
+    });
+
+    // Parse the response from the server
+    const data = await response.json();
+
+    // Display the feedback returned by the LLM
+    if (data.feedback) {
+      feedbackText.textContent = data.feedback;
+    } else {
+      feedbackText.textContent = "Error analyzing audio.";
+    }
+
+  } catch (err) {
+    console.error(err);
+    feedbackText.textContent = "Error analyzing audio.";
+  }
+
+  // Re-enable the feedback button after processing
+  feedbackBtn.disabled = false;
+}
+
 
     // ====== EVENT LISTENERS ======
     recordBtn.addEventListener("click", startRecording);
