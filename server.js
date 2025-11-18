@@ -1,10 +1,12 @@
 import express from "express";
 import multer from "multer";
+import cors from "cors";
+
 import { OpenAI } from "openai"; // OpenAI SDK
 
 const app = express();
 const port = process.env.PORT || 3000;
-
+app.use(cors()); // This will allow all origins by default
 // Set up multer for handling incoming audio files
 const upload = multer();
 
