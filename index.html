@@ -132,6 +132,22 @@
       flex: 1;
       min-width: 140px;
     }
+    .feedback {
+      background: #7600FC;
+      color: white;
+      flex: 1;
+      min-width: 140px;
+    }
+    .feedback-text {
+      background: #fafafa;
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid #e0e0e0;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      margin-top: 16px;
+      margin-bottom: 16px;
+    }
 
     .disabled {
       opacity: 0.5;
@@ -176,17 +192,6 @@
       <label>
         Class Code
         <input type="text" id="classCode" value="E423" />
-    <h2>Animals – Endangered species & comparisons</h2>
-
-    <div class="meta-row">
-      <label>
-        Student ID
-        <input type="text" id="studentId" placeholder="e.g. 2412345" />
-      </label>
-      <label>
-        Class Code
-        <input type="text" id="classCode" value="E423" />
-      </label>
     </div>
 
     <div class="prompt-selector">
@@ -215,8 +220,8 @@
     <audio id="audioPlayer" controls style="display:none;"></audio>
 
     <button id="uploadBtn" class="upload disabled">Download Audio</button>
-    <button id="feedbackBtn" class="feedback disabled">Asess Recording</button>
-    <div id="feedbackText" class="feedback-text">Loading feedback..</div>
+    <button id="feedbackBtn" class="feedback disabled">Assess Recording</button>
+    <div id="feedbackText" class="feedback-text"></div>
     <div id="status" class="status"></div>
 
 
@@ -339,7 +344,7 @@
           audioPlayer.src = audioURL;
           audioPlayer.style.display = "block";
 
-          statusEl.textContent = "Recording finished. You can listen or send it to your teacher.";
+          statusEl.textContent = "Recording finished.";
 
           playBtn.classList.remove("disabled");
           playBtn.disabled = false;
@@ -380,23 +385,42 @@
       });
     }
 
-// ====== DOWNLOAD AUDIO AND OPEN GOOGLE DRIVE ======
+
 async function uploadRecording() {
   if (!recordedBlob) {
     statusEl.textContent = "Please record something first.";
     return;
   }
 
-  const studentId = studentIdInput.value.trim();
-  const classCode = classCodeInput.value.trim();
-      formData.append("classCode", classCode);
-      formData.append("timestamp", timestamp);
-      formData.append("durationSeconds", String(seconds));
 
-      statusEl.textContent = "Uploading... please wait.";
+  const studentId = studentIdInput.value.trim() || "anonymous";
+  const classCode = classCodeInput.value.trim() || "unknown";
+  const now = new Date();
+  const timestamp = now.toISOString();
 
-      uploadBtn.classList.add("disabled");
-      uploadBtn.disabled = true;
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  const filename = `${studentId}_U1_P${currentPrompt}_${y}${m}${d}_${hh}${mm}${ss}.webm`;
+
+  const formData = new FormData();
+  formData.append("audio", recordedBlob, filename);
+  formData.append("filename", filename);
+  formData.append("unit", UNIT_NAME);
+  formData.append("promptNumber", String(currentPrompt));
+  formData.append("studentId", studentId);
+  formData.append("classCode", classCode);
+  formData.append("timestamp", timestamp);
+  formData.append("durationSeconds", String(seconds));
+
+  statusEl.textContent = "Uploading... please wait.";
+
+  uploadBtn.classList.add("disabled");
+  uploadBtn.disabled = true;
 
       try {
         const url = URL.createObjectURL(recordedBlob);
@@ -416,25 +440,65 @@ async function uploadRecording() {
         const googleDriveFolderUrl = "https://drive.google.com/drive/folders/1Vhk_9L1Cbbyedz4TZULG74alHmfzpwhK";
         window.open(googleDriveFolderUrl, '_blank');
 
-        statusEl.innerHTML = '
-        Download complete!<br>
-        File: $(filename)<br>
-        Google Drive folder opened. Please upload your audio file.
-        '
-        })
-        });
 
-        if (!res.ok) {
-          throw new Error("Upload failed with status " + res.status);
-        }
+
+        // if (!res.ok) {
+        //   throw new Error("download failed with status " + res.status);
+        // }
+        statusEl.textContent = "Downloaded successfully. Please upload the audio file to your teacher's google drive.";
 
       } catch (err) {
         console.error(err);
-        statusEl.textContent = "Upload error. Please try again later.";
+        statusEl.textContent = "download error. Please try again later.";
         uploadBtn.classList.remove("disabled");
         uploadBtn.disabled = false;
       }
     }
+
+// ====== Frontend - Analyze Audio and Fetch Feedback ======
+const feedbackBtn = document.getElementById("feedbackBtn");
+const feedbackText = document.getElementById("feedbackText");
+
+feedbackBtn.addEventListener("click", analyzeRecording);
+
+async function analyzeRecording() {
+  if (!recordedBlob) {
+    statusEl.textContent = "Please record something first.";
+    return;
+  }
+
+  // Disable feedback button during processing
+  feedbackText.textContent = "Analyzing your speech...";
+  feedbackBtn.disabled = true;
+
+  const formData = new FormData();
+  formData.append("audio", recordedBlob, "recording.webm");
+
+  try {
+    // Send the audio file to the backend for LLM processing
+    const response = await fetch("http://localhost:3000/analyze", {
+      method: "POST",
+      body: formData
+    });
+
+    // Parse the response from the server
+    const data = await response.json();
+
+    // Display the feedback returned by the LLM
+    if (data.feedback) {
+      feedbackText.textContent = data.feedback;
+    } else {
+      feedbackText.textContent = "Error analyzing audio.";
+    }
+
+  } catch (err) {
+    console.error(err);
+    feedbackText.textContent = "Error analyzing audio.";
+  }
+
+  // Re-enable the feedback button after processing
+  feedbackBtn.disabled = false;
+}
 
     // ====== EVENT LISTENERS ======
     recordBtn.addEventListener("click", startRecording);
