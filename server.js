@@ -12,7 +12,7 @@ const upload = multer();
 
 // Set up OpenAI client
 const client = new OpenAI({
-  apiKey: "YOUR_OPENAI_API_KEY" // Replace with your OpenAI API key
+  apiKey: "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" // Replace with your OpenAI API key
 });
 
 // Endpoint for analyzing the audio file
@@ -21,7 +21,6 @@ app.post("/analyze", upload.single("audio"), async (req, res) => {
     // Convert the uploaded file to base64
     const audioBase64 = req.file.buffer.toString("base64");
 
-    // Send the audio to OpenAI's GPT (or Whisper for transcription)
     const response = await client.chat.completions.create({
       model: "gpt-4",
       messages: [
