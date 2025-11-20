@@ -11,10 +11,7 @@ const port = process.env.PORT || 3000;
 
 // Enhanced CORS configuration
 app.use(cors({
-  origin: true, // Allow any origin in development
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  origin: '*',
 }));
 
 // Handle preflight requests
