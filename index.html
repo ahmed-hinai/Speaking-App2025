@@ -450,27 +450,31 @@ async function analyzeRecording() {
     return;
   }
 
-  feedbackText.textContent = "Analyzing your speech...";
+  feedbackText.textContent = "Analyzing your speech... (this may take 30-60 seconds)";
   feedbackBtn.disabled = true;
-  statusEl.textContent = "Processing audio...";
+  statusEl.textContent = "Processing audio with AI...";
 
   try {
-    // Convert WebM to WAV format
-    const wavBlob = await convertWebMToWAV(recordedBlob);
-    
-    console.log("Converted audio:", {
-      originalType: recordedBlob.type,
-      convertedType: wavBlob.type,
-      originalSize: recordedBlob.size,
-      convertedSize: wavBlob.size
+    // First, try without conversion (send the original WebM with Opus)
+    console.log("Original audio:", {
+      type: recordedBlob.type,
+      size: recordedBlob.size
     });
 
     const formData = new FormData();
-    formData.append("audio", wavBlob, "recording.wav");
+    
+    // Try sending the original WebM/Opus format first (it's often supported)
+    if (recordedBlob.type.includes('webm') || recordedBlob.type.includes('opus')) {
+      formData.append("audio", recordedBlob, "recording.webm");
+    } else {
+      // Fallback to WAV conversion
+      const wavBlob = await convertWebMToWAV(recordedBlob);
+      formData.append("audio", wavBlob, "recording.wav");
+    }
 
-    // Add timeout to the fetch request
+    // Increase timeout to 120 seconds
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds
 
     const response = await fetch("https://speaking-app2025.onrender.com/analyze", {
       method: "POST",
@@ -506,8 +510,8 @@ async function analyzeRecording() {
   } catch (err) {
     console.error('Analysis error:', err);
     if (err.name === 'AbortError') {
-      feedbackText.textContent = "Request timed out. Please try again.";
-      statusEl.textContent = "Timeout error.";
+      feedbackText.textContent = "Request timed out. The server is taking too long to process. Please try a shorter recording or try again later.";
+      statusEl.textContent = "Timeout error - server overloaded.";
     } else {
       feedbackText.textContent = "Error analyzing audio: " + err.message;
       statusEl.textContent = "Analysis error.";
