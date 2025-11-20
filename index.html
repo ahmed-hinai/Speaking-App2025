@@ -454,7 +454,7 @@ async function uploadRecording() {
         uploadBtn.disabled = false;
       }
     }
-// ====== Frontend - Analyze Audio and Fetch Feedback ======
+// ====== Frontend - Analyze Audio with Custom Boundary ======
 const feedbackBtn = document.getElementById("feedbackBtn");
 const feedbackText = document.getElementById("feedbackText");
 
@@ -466,56 +466,103 @@ async function analyzeRecording() {
     return;
   }
 
-  // Disable feedback button during processing
   feedbackText.textContent = "Analyzing your speech...";
   feedbackBtn.disabled = true;
 
   try {
-    // Convert the recorded blob to a more compatible format if needed
-    const audioBlob = await ensureCompatibleAudio(recordedBlob);
+    // Convert blob to base64 for the alternative endpoint
+    const base64Audio = await blobToBase64(recordedBlob);
     
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "recording.wav");
-
-    console.log("Sending audio file:", {
-      size: audioBlob.size,
-      type: audioBlob.type
-    });
-
-    // Send the audio file to the backend for LLM processing
-    const response = await fetch("https://speaking-app2025.onrender.com/analyze", {
+    // Use the alternative endpoint that handles multipart manually
+    const response = await fetch("https://speaking-app2025.onrender.com/analyze-direct", {
       method: "POST",
-      body: formData
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        audio: base64Audio,
+        mimeType: recordedBlob.type
+      })
     });
 
-    // Check if response is OK before trying to parse
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Server response not OK:", errorText);
       throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
 
-    // Try to parse as JSON
     const data = await response.json();
-
-    // Display the feedback
+    
     if (data.feedback) {
       feedbackText.textContent = data.feedback;
-    } else if (data.error) {
-      feedbackText.textContent = "Error: " + data.error;
     } else {
-      feedbackText.textContent = "Unexpected response from server.";
+      feedbackText.textContent = "Error analyzing audio.";
     }
 
   } catch (err) {
     console.error('Analysis error:', err);
-    feedbackText.textContent = "Error analyzing audio: " + (err.message || 'Unknown error');
+    feedbackText.textContent = "Error analyzing audio: " + err.message;
   }
 
-  // Re-enable the feedback button after processing
   feedbackBtn.disabled = false;
 }
 
+function blobToBase64(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      // Remove the data:audio/...;base64, prefix
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Alternative: Try with custom boundary in FormData
+async function analyzeRecordingWithBoundary() {
+  if (!recordedBlob) {
+    statusEl.textContent = "Please record something first.";
+    return;
+  }
+
+  feedbackText.textContent = "Analyzing your speech...";
+  feedbackBtn.disabled = true;
+
+  try {
+    const formData = new FormData();
+    formData.append("audio", recordedBlob, "recording.webm");
+
+    // Create a custom boundary
+    const boundary = 'WebAppBoundary12345';
+    
+    const response = await fetch("https://speaking-app2025.onrender.com/analyze", {
+      method: "POST",
+      headers: {
+        // Don't set Content-Type when using FormData, let the browser set it with the boundary
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.feedback) {
+      feedbackText.textContent = data.feedback;
+    } else {
+      feedbackText.textContent = "Error analyzing audio.";
+    }
+
+  } catch (err) {
+    console.error('Analysis error:', err);
+    feedbackText.textContent = "Error analyzing audio: " + err.message;
+  }
+
+  feedbackBtn.disabled = false;
+}
 // Function to ensure audio is in a compatible format
 async function ensureCompatibleAudio(blob) {
   // If it's already a WAV file, return as-is
@@ -554,6 +601,7 @@ async function convertToWav(webmBlob) {
   </script>
 </body>
 </html>
+
 
 
 
