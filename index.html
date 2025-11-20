@@ -454,7 +454,7 @@ async function uploadRecording() {
         uploadBtn.disabled = false;
       }
     }
-// ====== Frontend - Analyze Audio with Custom Boundary ======
+// ====== Frontend - Analyze Audio with Format Conversion ======
 const feedbackBtn = document.getElementById("feedbackBtn");
 const feedbackText = document.getElementById("feedbackText");
 
@@ -466,23 +466,27 @@ async function analyzeRecording() {
     return;
   }
 
-  feedbackText.textContent = "Analyzing your speech...";
+  feedbackText.textContent = "Converting and analyzing your speech...";
   feedbackBtn.disabled = true;
 
   try {
-    // Convert blob to base64 for the alternative endpoint
-    const base64Audio = await blobToBase64(recordedBlob);
+    // Convert WebM to WAV format
+    const wavBlob = await convertWebMToWAV(recordedBlob);
     
-    // Use the alternative endpoint that handles multipart manually
-    const response = await fetch("https://speaking-app2025.onrender.com/analyze-direct", {
+    console.log("Converted audio:", {
+      originalType: recordedBlob.type,
+      convertedType: wavBlob.type,
+      originalSize: recordedBlob.size,
+      convertedSize: wavBlob.size
+    });
+
+    const formData = new FormData();
+    formData.append("audio", wavBlob, "recording.wav");
+
+    // Use the regular analyze endpoint (not analyze-direct)
+    const response = await fetch("https://speaking-app2025.onrender.com/analyze", {
       method: "POST",
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        audio: base64Audio,
-        mimeType: recordedBlob.type
-      })
+      body: formData
     });
 
     if (!response.ok) {
@@ -506,16 +510,94 @@ async function analyzeRecording() {
   feedbackBtn.disabled = false;
 }
 
-function blobToBase64(blob) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      // Remove the data:audio/...;base64, prefix
-      const base64 = reader.result.split(',')[1];
-      resolve(base64);
+// Convert WebM blob to WAV format using Web Audio API
+async function convertWebMToWAV(webmBlob) {
+  return new Promise((resolve, reject) => {
+    // Create an audio context
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create file reader to read the WebM blob
+    const fileReader = new FileReader();
+    
+    fileReader.onload = function() {
+      const arrayBuffer = this.result;
+      
+      // Decode the WebM audio data
+      audioContext.decodeAudioData(arrayBuffer, (audioBuffer) => {
+        // Convert the AudioBuffer to WAV format
+        const wavBlob = audioBufferToWav(audioBuffer);
+        resolve(wavBlob);
+      }, (error) => {
+        console.error('Error decoding audio:', error);
+        // Fallback: just rename the blob and hope for the best
+        const fallbackBlob = new Blob([webmBlob], { type: 'audio/wav' });
+        resolve(fallbackBlob);
+      });
     };
-    reader.readAsDataURL(blob);
+    
+    fileReader.onerror = () => {
+      // Fallback if conversion fails
+      const fallbackBlob = new Blob([webmBlob], { type: 'audio/wav' });
+      resolve(fallbackBlob);
+    };
+    
+    fileReader.readAsArrayBuffer(webmBlob);
   });
+}
+
+// Convert AudioBuffer to WAV Blob
+function audioBufferToWav(audioBuffer) {
+  const numChannels = audioBuffer.numberOfChannels;
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length;
+  
+  // Create WAV header
+  const wavBuffer = new ArrayBuffer(44 + length * numChannels * 2);
+  const view = new DataView(wavBuffer);
+  
+  // RIFF identifier
+  writeString(view, 0, 'RIFF');
+  // RIFF chunk length
+  view.setUint32(4, 36 + length * numChannels * 2, true);
+  // RIFF type
+  writeString(view, 8, 'WAVE');
+  // format chunk identifier
+  writeString(view, 12, 'fmt ');
+  // format chunk length
+  view.setUint32(16, 16, true);
+  // sample format (raw)
+  view.setUint16(20, 1, true);
+  // channel count
+  view.setUint16(22, numChannels, true);
+  // sample rate
+  view.setUint32(24, sampleRate, true);
+  // byte rate (sample rate * block align)
+  view.setUint32(28, sampleRate * numChannels * 2, true);
+  // block align (channel count * bytes per sample)
+  view.setUint16(32, numChannels * 2, true);
+  // bits per sample
+  view.setUint16(34, 16, true);
+  // data chunk identifier
+  writeString(view, 36, 'data');
+  // data chunk length
+  view.setUint32(40, length * numChannels * 2, true);
+  
+  // Write the PCM samples
+  const offset = 44;
+  for (let i = 0; i < length; i++) {
+    for (let channel = 0; channel < numChannels; channel++) {
+      const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+      view.setInt16(offset + (i * numChannels + channel) * 2, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    }
+  }
+  
+  return new Blob([wavBuffer], { type: 'audio/wav' });
+}
+
+function writeString(view, offset, string) {
+  for (let i = 0; i < string.length; i++) {
+    view.setUint8(offset + i, string.charCodeAt(i));
+  }
 }
 
 // Alternative: Try with custom boundary in FormData
@@ -601,6 +683,7 @@ async function convertToWav(webmBlob) {
   </script>
 </body>
 </html>
+
 
 
 
