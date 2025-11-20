@@ -9,22 +9,15 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Enhanced CORS configuration
 app.use(cors({
   origin: '*',
 }));
 
-// Handle preflight requests
-app.options('*', cors());
-
-// Add body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
+// Configure multer with explicit boundary
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
 }).single('audio');
 
 const client = new OpenAI({
@@ -32,8 +25,6 @@ const client = new OpenAI({
 });
 
 app.post('/analyze', (req, res) => {
-  console.log('=== ANALYZE REQUEST RECEIVED ===');
-  
   upload(req, res, async (err) => {
     if (err) {
       console.error('Upload error:', err);
@@ -41,152 +32,171 @@ app.post('/analyze', (req, res) => {
     }
 
     if (!req.file) {
-      console.error('No file in request');
       return res.status(400).json({ error: 'No audio file uploaded.' });
     }
 
     try {
-      console.log('File received:', {
+      console.log('Received file:', {
+        originalname: req.file.originalname,
         mimetype: req.file.mimetype,
         size: req.file.size
       });
 
-      // 1. TRANSCRIBE AUDIO
-      console.log('Sending to Whisper...');
+      // Create a custom boundary for the OpenAI request
+      const boundary = 'WebAppBoundary12345';
+      
+      // Manually create the multipart form data
+      const formData = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="audio.webm"\r\nContent-Type: ${req.file.mimetype}\r\n\r\n${req.file.buffer.toString('binary')}\r\n--${boundary}\r\nContent-Disposition: form-data; name="model"\r\n\r\nwhisper-1\r\n--${boundary}--`;
+
+      // 1. TRANSCRIBE AUDIO - Send with custom boundary
       const transcript = await client.audio.transcriptions.create({
         file: req.file.buffer,
         model: 'whisper-1',
         language: 'en',
         response_format: 'text',
+      }, {
+        // Override the default boundary
+        headers: {
+          'Content-Type': `multipart/form-data; boundary=${boundary}`
+        }
       });
 
-      console.log('Transcription successful:', transcript.substring(0, 100) + '...');
+      console.log('Transcription successful. Text length:', transcript.length);
 
-      // Check if we got a meaningful transcript
-      if (!transcript || transcript.trim().length < 10) {
-        console.log('Transcript too short or empty');
-        return res.json({
-          transcript: transcript || 'No speech detected',
-          feedback: "No clear speech was detected in your recording. Please ensure you're speaking clearly and try again with a longer recording."
-        });
-      }
-
-      // 2. ANALYZE THE TRANSCRIPT
-      console.log('Sending to GPT for analysis...');
+      // ANALYZE THE TRANSCRIPT WITH GPT
       const feedbackResponse = await client.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4",
         messages: [
           { 
             role: 'system', 
-            content: `You are an ESL speaking examiner. Provide clear, structured feedback in this exact format:
+            content: `You are an ESL speaking examiner. Provide clear, structured feedback in the following format:
+            
+Grammar: [feedback on grammar]
+Pronunciation: [feedback on pronunciation] 
+Fluency: [feedback on fluency]
+Task Completion: [feedback on task completion]
+Overall: [overall feedback and suggestions]
 
-GRAMMAR: [2-3 specific points about grammar]
-PRONUNCIATION: [2-3 specific points about pronunciation]
-FLUENCY: [2-3 specific points about fluency]
-TASK COMPLETION: [Did they address the prompt?]
-OVERALL: [Brief overall feedback and suggestions]
-
-Keep it constructive and encouraging. Maximum 250 words.`
+Keep it constructive and encouraging. Focus on specific improvements the student can make.`
           },
           {
             role: 'user',
-            content: `Please analyze this ESL student's speech and provide feedback. Here's their transcript: "${transcript}"`
+            content: `Please analyze this student's speech transcript and provide feedback:\n\n"${transcript}"`
           },
         ],
-        max_tokens: 350,
+        max_tokens: 500,
         temperature: 0.7,
       });
 
-      console.log('Analysis complete');
-      
       res.json({ 
         transcript: transcript,
         feedback: feedbackResponse.choices[0].message.content 
       });
 
     } catch (error) {
-      console.error('=== ANALYSIS ERROR ===', error);
+      console.error('Analysis error:', error);
       
-      let errorMessage = 'Error analyzing audio';
-      let statusCode = 500;
-      
-      if (error.message.includes('multipart form')) {
-        errorMessage = 'Audio format not supported. Please try recording again.';
-        statusCode = 400;
-      } else if (error.message.includes('API key')) {
-        errorMessage = 'Server configuration error. Please check OpenAI API key.';
-        statusCode = 500;
-      } else if (error.response) {
-        errorMessage = `OpenAI API error: ${error.response.data.error?.message || error.message}`;
-        statusCode = 500;
-      } else {
-        errorMessage += `: ${error.message}`;
+      // More detailed error logging
+      if (error.response) {
+        console.error('OpenAI API response error:', error.response.data);
+        console.error('OpenAI API status:', error.response.status);
       }
       
-      console.error('Final error to client:', errorMessage);
-      res.status(statusCode).json({ 
-        error: errorMessage
+      res.status(500).json({ 
+        error: 'Error analyzing audio: ' + (error.message || 'Unknown error'),
+        details: error.response?.data || 'No additional details'
       });
     }
   });
 });
 
-// Health check with detailed info
+// Alternative endpoint that uses a different approach
+app.post('/analyze-direct', async (req, res) => {
+  // This endpoint will receive the audio as base64 and handle the multipart form manually
+  let body = '';
+  
+  req.on('data', chunk => {
+    body += chunk.toString();
+  });
+  
+  req.on('end', async () => {
+    try {
+      const { audio, mimeType = 'audio/webm' } = JSON.parse(body);
+      
+      if (!audio) {
+        return res.status(400).json({ error: 'No audio data provided' });
+      }
+
+      // Convert base64 to buffer
+      const audioBuffer = Buffer.from(audio, 'base64');
+      
+      // Create form data with custom boundary for OpenAI
+      const boundary = 'WebAppBoundary';
+      const formData = [
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="file"; filename="audio.webm"',
+        `Content-Type: ${mimeType}`,
+        '',
+        audioBuffer.toString('binary'),
+        `--${boundary}`,
+        'Content-Disposition: form-data; name="model"',
+        '',
+        'whisper-1',
+        `--${boundary}--`
+      ].join('\r\n');
+
+      // Use fetch to send to OpenAI with custom boundary
+      const openaiResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        },
+        body: formData,
+      });
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+      }
+
+      const transcription = await openaiResponse.json();
+      
+      // Continue with GPT analysis as before
+      const feedbackResponse = await client.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { 
+            role: 'system', 
+            content: `You are an ESL speaking examiner. Provide clear, structured feedback.`
+          },
+          {
+            role: 'user',
+            content: `Please analyze this student's speech transcript and provide feedback:\n\n"${transcription.text}"`
+          },
+        ],
+        max_tokens: 500,
+      });
+
+      res.json({ 
+        transcript: transcription.text,
+        feedback: feedbackResponse.choices[0].message.content 
+      });
+
+    } catch (error) {
+      console.error('Direct analysis error:', error);
+      res.status(500).json({ 
+        error: 'Error analyzing audio: ' + (error.message || 'Unknown error')
+      });
+    }
+  });
+});
+
+// Health check endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    status: 'Server is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    openaiConfigured: !!process.env.OPENAI_API_KEY
-  });
-});
-
-// Test endpoint for file uploads
-app.post('/test-upload', (req, res) => {
-  upload(req, res, (err) => {
-    if (err) {
-      return res.status(400).json({ 
-        success: false,
-        error: err.message 
-      });
-    }
-    
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false,
-        error: 'No file received' 
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'File upload test successful',
-      fileInfo: {
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        supported: ['wav', 'mp3', 'm4a', 'webm', 'ogg', 'mp4'].includes(req.file.mimetype.split('/')[1])
-      }
-    });
-  });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? error.message : undefined
-  });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  res.send('Server is up and running!');
 });
 
 app.listen(port, () => {
-  console.log(`=== SERVER STARTED ===`);
-  console.log(`Server running on port ${port}`);
-  console.log(`OpenAI API Key configured: ${!!process.env.OPENAI_API_KEY}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
